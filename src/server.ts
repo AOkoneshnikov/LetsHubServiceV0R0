@@ -86,19 +86,19 @@ async function scanHub() {
       let link = client.open(linkInit);
       let link_data = await link.getData();
       if (link_data != null) {
-        //console.log(`trustline = ${link_data.trustline} creditor = ${link_data.creditor?.toString()}`);
         idlinkStart++;
         fs.writeFileSync('./src/idlink.txt', String(idlinkStart));
         if (link_data.trustline != null) {
           let trustline = client.open(await LetsTrustlineV0R0.fromAddress(link_data.trustline));
           let trustline_data = await trustline.getData();
-          await conn.query(`MERGE (n: Wallets {address: '${trustline_data.creditor}'});`);
-          await conn.query(`MERGE (n: Wallets {address: '${trustline_data.debitor}'});`);
+          let date = new Date();
+          await conn.query(`MERGE (n: Wallets {address: '${trustline_data.creditor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
+          await conn.query(`MERGE (n: Wallets {address: '${trustline_data.debitor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
           await conn.query(`MATCH (a: Wallets {address: '${trustline_data.creditor}'}), (b: Wallets {address: '${trustline_data.debitor}'}) 
-        MERGE (a)-[e:Trustlines {maxdept: ${trustline_data.limit}, valuedept: ${trustline_data.value}}]->(b);`)
+                            MERGE (a)-[e:Trustlines {maxdept: ${trustline_data.limit}, valuedept: ${trustline_data.value}, updated: TIMESTAMP('${date.toISOString()}')}]->(b)
+                             ON MATCH SET e.maxdept = ${trustline_data.limit + 200n}, e.updated = TIMESTAMP('${date.toISOString()}');`)
           console.log(trustline_data.creditor);
-          let now = timeStamp.toString();
-          console.log(now);
+          
         }
         
       }

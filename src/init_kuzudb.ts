@@ -5,10 +5,10 @@ const conn = new kuzu.Connection(db);
 void init();
 
 async function init() { 
-    // await createDB();
+     //await createDB();
     // await loadDemoData();
-    // await dropDB();
-     await showData();
+     //await dropDB();
+      await showData();
 }
 
 async function createDB() {
@@ -16,17 +16,19 @@ async function createDB() {
         "CREATE NODE TABLE Wallets(address STRING, content BLOB, updated TIMESTAMP, PRIMARY KEY (address))"
       );
     await conn.query(
-        "CREATE REL TABLE Trustlines(FROM Wallets TO Wallets, address STRING, valuedept UINT64, maxdept UINT64, updated TIMESTAMP)"
+        "CREATE REL TABLE Trustlines(FROM Wallets TO Wallets, valuedept UINT64, maxdept UINT64, updated TIMESTAMP)"
       );
     console.log(`DB tables created`);
 }
 
 async function dropDB() {
-    await conn.query(
-        "DROP TABLE Wallets"
-      );
+    
     await conn.query(
         "DROP TABLE Trustlines"
+      );
+
+      await conn.query(
+        "DROP TABLE Wallets"
       );
     console.log(`DB tables drop`);
 }
