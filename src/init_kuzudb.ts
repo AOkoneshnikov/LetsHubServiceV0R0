@@ -5,10 +5,10 @@ const conn = new kuzu.Connection(db);
 void init();
 
 async function init() { 
-     //await createDB();
+    //await createDB();
     // await loadDemoData();
-     //await dropDB();
-      await showData();
+   //  await dropDB();
+     await showData();
 }
 
 async function createDB() {

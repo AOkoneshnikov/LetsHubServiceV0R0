@@ -44,10 +44,15 @@ app.get('/', async (request, response) => {
 });
 
 app.get('/wallet/:address', asyncHandler(async (request, response) => {
-  let addr = Address.parse(request.params['address']);
-  if ((await client.getContractState(addr)).state != 'active') { response.send(`Contract not active`); return; }
-  let wallet = client.open(await LetsWalletV0R0.fromAddress(addr));
-  response.send(JSONbig.stringify(await wallet.getData()));
+  const { address } = request.params;
+  let str = `MATCH (wallet:Wallets{address:'${address}'}) RETURN wallet;`
+  let queryResult = await conn.query(str)
+  if (await queryResult.hasNext()) {
+    let row = await queryResult.getNext();
+    return row;    
+  } else {
+    return `Error: wallet ${address} not found`;
+  }
 }))
 
 app.get('/trustline/:address', asyncHandler(async (request, response) => {
@@ -95,8 +100,9 @@ async function scanHub() {
           await conn.query(`MERGE (n: Wallets {address: '${trustline_data.creditor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
           await conn.query(`MERGE (n: Wallets {address: '${trustline_data.debitor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
           await conn.query(`MATCH (a: Wallets {address: '${trustline_data.creditor}'}), (b: Wallets {address: '${trustline_data.debitor}'}) 
-                            MERGE (a)-[e:Trustlines {maxdept: ${trustline_data.limit}, valuedept: ${trustline_data.value}, updated: TIMESTAMP('${date.toISOString()}')}]->(b)
-                             ON MATCH SET e.maxdept = ${trustline_data.limit + 200n}, e.updated = TIMESTAMP('${date.toISOString()}');`)
+                            MERGE (a)-[e:Trustlines]->(b)
+                            ON CREATE SET e.maxdept = ${trustline_data.limit}, e.updated = TIMESTAMP('${date.toISOString()}') 
+                            ON MATCH SET e.maxdept = ${trustline_data.limit + 200n}, e.updated = TIMESTAMP('${date.toISOString()}');`)
           console.log(trustline_data.creditor);
           
         }
