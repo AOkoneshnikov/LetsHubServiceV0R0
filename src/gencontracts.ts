@@ -39,11 +39,11 @@ async function init() {
     //await deployLetsHub("TEST");
    // await gen_wallet('TEST');
     await fund_contracts('hub', 'TEST');
+    await fund_contracts('wallets', 'TEST');
 
-    // await fund_contracts('wallets', 'TEST');
-    let walletCreditor = await walletFromSeedBase64(seeds_base64[9], 'TEST');
-    let walletDebitor = await walletFromSeedBase64(seeds_base64[0], 'TEST');
-    await create_trustline(walletCreditor, walletDebitor, keyPairFromSeedBase64(seeds_base64[9]).secretKey);
+    let walletCreditor = await walletFromSeedBase64(seeds_base64[1], 'TEST');
+    let walletDebitor = await walletFromSeedBase64(seeds_base64[3], 'TEST');
+    await create_trustline(walletCreditor, walletDebitor, keyPairFromSeedBase64(seeds_base64[1]).secretKey);
 
 
     // let tl = client.open(await LetsTrustlineV0R0.fromInit(walletCreditor.address, walletDebitor.address));

@@ -13,3 +13,6 @@ fund wallet address = EQBEZkwHGpx8BNNJU30Wsuew7Ep8tEm2OcabuuoGTJ8gvZH2
 fund wallet address = EQDYZ8M0cucZX0hWRRGxkZ9c5OEK7dTSRtelNHlBgUli6asM
 fund wallet address = EQArCBAjs0keX18IKtLMLxEfZ1RB2Nl27eATCWoOrgTDQ9qI
 fund wallet address = EQA8-LEtAmy4he9hUSQqC00iT-F5LGVujuPkbykSqy69yVT1
+
+
+trustline address = EQAGkYC4b6PXW_miTd3zU7MOaNy6xnB5dwsOCgkKYXxSSc-Y

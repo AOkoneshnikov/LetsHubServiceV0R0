@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { json } from 'express'
 import * as dotenv from "dotenv";
 import { readdir } from "fs/promises";
 import { KeyPair, mnemonicToPrivateKey } from '@ton/crypto';
@@ -36,38 +36,39 @@ app.get('/', async (request, response) => {
         address: ${hub.address}<br/>
         currency: ${currency}<br/>
         getData: ${dataHub}<br/>
-  <br/>Use examples: <br/>
-  http://77.91.69.161:5000/wallet/EQDHKWjBopSrJXHp45G_UVLS0XzBnghwSDqINBqWRjwk58gm
-  http://77.91.69.161:5000/trustline/EQDXe0Rn6pNeAQXRhmlJ8JNG4291eb9DJKV74FSndOUH7oQH
-  http://77.91.69.161:5000/link/EQC7i0xeXNgbEnargWCmE1uimRVADhAgz4Q4heR38_snX_6Z
+  <br/>Use examples: <br/><br/>
+  http://77.91.69.161:5000/path/from/EQBBZf2PzCIP9wWHQgv3zSYVMqt4mTOh0LOqtIFogpavk8fV/to/EQDIzaG1rkw_ZMnBBIOZYBWNNv2-bQJYu0veynHllOZvsKeN
+  <br/><br/>
+  http://77.91.69.161:5000/trustlines/EQDIzaG1rkw_ZMnBBIOZYBWNNv2-bQJYu0veynHllOZvsKeN
   `);
 });
 
-app.get('/wallet/:address', asyncHandler(async (request, response) => {
-  const { address } = request.params;
-  let str = `MATCH (wallet:Wallets{address:'${address}'}) RETURN wallet;`
+app.get('/path/from/:sender/to/:destination', asyncHandler(async (request, response) => {
+  const { sender } = request.params;
+  const { destination } = request.params;
+
+  let str = `MATCH path=((a:Wallets{address: '${sender}'})-[:Trustlines* SHORTEST 1..25]->(b:Wallets{address: '${destination}'})) RETURN path;`
+  console.log(str);
   let queryResult = await conn.query(str)
   if (await queryResult.hasNext()) {
-    let row = await queryResult.getNext();
-    return row;    
+      let row = await queryResult.getNext()
+      response.send(row);     
   } else {
-    return `Error: wallet ${address} not found`;
+    response.send(`Error: path not found`);
+  }    
+}));
+
+app.get('/trustlines/:wallet', asyncHandler(async (request, response) => {
+  const { wallet } = request.params;
+  let str = `MATCH (a: Wallets{address: '${wallet}'})-[trustline: Trustlines]->(b: Wallets) RETURN trustline;`
+  let queryResult = await conn.query(str);
+  let jsonArray: any = [];
+  while (await queryResult.hasNext()) {
+      let currentData = await queryResult.getNext();
+      jsonArray.push(currentData);
   }
-}))
-
-app.get('/trustline/:address', asyncHandler(async (request, response) => {
-  let addr = Address.parse(request.params['address']);
-  if ((await client.getContractState(addr)).state != 'active') { response.send(`Contract not active`); return; }
-  let trustline = client.open(await LetsTrustlineV0R0.fromAddress(addr));
-  response.send(JSONbig.stringify(await trustline.getData()));
-}))
-
-app.get('/link/:address', asyncHandler(async (request, response) => {
-  let addr = Address.parse(request.params['address']);
-  if ((await client.getContractState(addr)).state != 'active') { response.send(`Contract not active`); return; }
-  let link = client.open(await LetsLinkV0R0.fromAddress(addr));
-  response.send(JSONbig.stringify(await link.getData()));
-}))
+  response.send(JSON.stringify(jsonArray));
+  }));
 
 
 void init();
@@ -77,7 +78,7 @@ app.listen(port, () => console.log(`Running on port ${port}`));
 async function init() { 
   hub = client.open(await LetsHubV0R0.fromInit(currency));
   dataHub = JSONbig.stringify(await hub.getData());
-  let timerId = setInterval(() => scanHub(), 15000);
+  // let timerId = setInterval(() => scanHub(), 10000);
 }
 
 async function scanHub() {
@@ -101,9 +102,9 @@ async function scanHub() {
           await conn.query(`MERGE (n: Wallets {address: '${trustline_data.debitor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
           await conn.query(`MATCH (a: Wallets {address: '${trustline_data.creditor}'}), (b: Wallets {address: '${trustline_data.debitor}'}) 
                             MERGE (a)-[e:Trustlines]->(b)
-                            ON CREATE SET e.maxdept = ${trustline_data.limit}, e.updated = TIMESTAMP('${date.toISOString()}') 
-                            ON MATCH SET e.maxdept = ${trustline_data.limit + 200n}, e.updated = TIMESTAMP('${date.toISOString()}');`)
-          console.log(trustline_data.creditor);
+                            ON CREATE SET e.maxdept = ${trustline_data.limit}, e.address = '${trustline.address}', e.valuedept = ${trustline_data.value}, e.updated = TIMESTAMP('${date.toISOString()}') 
+                            ON MATCH SET e.maxdept = ${trustline_data.limit}, e.valuedept = ${trustline_data.value}, e.updated = TIMESTAMP('${date.toISOString()}');`)
+          console.log(trustline.address);
           
         }
         
