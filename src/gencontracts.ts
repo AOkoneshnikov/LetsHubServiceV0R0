@@ -40,11 +40,8 @@ async function init() {
    // await gen_wallet('TEST');
     await fund_contracts('hub', 'TEST');
     await fund_contracts('wallets', 'TEST');
-
-    let walletCreditor = await walletFromSeedBase64(seeds_base64[1], 'TEST');
-    let walletDebitor = await walletFromSeedBase64(seeds_base64[3], 'TEST');
-    await create_trustline(walletCreditor, walletDebitor, keyPairFromSeedBase64(seeds_base64[1]).secretKey);
-
+    //await gen_trustline();
+    
 
     // let tl = client.open(await LetsTrustlineV0R0.fromInit(walletCreditor.address, walletDebitor.address));
     // let hub = client.open(await LetsHubV0R0.fromInit('TEST'));
@@ -61,6 +58,12 @@ async function init() {
 }
   
   void init();
+
+  async function gen_trustline() {
+    let walletCreditor = await walletFromSeedBase64(seeds_base64[1], 'TEST');
+    let walletDebitor = await walletFromSeedBase64(seeds_base64[4], 'TEST');
+    await create_trustline(walletCreditor, walletDebitor, keyPairFromSeedBase64(seeds_base64[1]).secretKey);
+  }
 
   async function save_seed() {
     let i = 0;

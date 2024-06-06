@@ -43,6 +43,25 @@ app.get('/', async (request, response) => {
   `);
 });
 
+app.get('/update/:trustline_address', asyncHandler(async (request, response) => {
+  const { trustline_address } = request.params;
+  let trustline = client.open(await LetsTrustlineV0R0.fromAddress(Address.parse(trustline_address)));
+  let trustline_data = await trustline.getData();
+  let date = new Date();
+  let str = `MATCH (a:Wallets)-[trustline:Trustlines]->(b:Wallets) WHERE trustline.address = '${trustline_address}' 
+            SET trustline.maxdept=${trustline_data.limit}, trustline.valuedept=${trustline_data.value}, trustline.updated = TIMESTAMP('${date.toISOString()}') RETURN trustline.*;`;
+ 
+  let queryResult = await conn.query(str);
+  if (await queryResult.hasNext()) {
+    let row = await queryResult.getNext()
+    response.send(row);     
+  }
+  else {
+    response.send(`Error: trustline not found`);
+  }   
+
+}));
+
 app.get('/path/from/:sender/to/:destination', asyncHandler(async (request, response) => {
   const { sender } = request.params;
   const { destination } = request.params;
@@ -78,38 +97,40 @@ app.listen(port, () => console.log(`Running on port ${port}`));
 async function init() { 
   hub = client.open(await LetsHubV0R0.fromInit(currency));
   dataHub = JSONbig.stringify(await hub.getData());
-  // let timerId = setInterval(() => scanHub(), 10000);
+  let timerId = setInterval(() => scanHub(), 10000);
 }
 
 async function scanHub() {
-  let txt = fs.readFileSync('./src/idlink.txt', 'utf8');
-  let idlinkStart = BigInt(txt);
-  let idlink = (await hub.getData()).linkId;
-  console.log(`idlink = ${idlink}`);
-  while (idlinkStart <= idlink - 1n) {
-    let linkInit = await LetsLinkV0R0.fromInit(idlinkStart, currency);
-    if ((await client.getContractState(linkInit.address)).state == 'active') {
-      let link = client.open(linkInit);
-      let link_data = await link.getData();
-      if (link_data != null) {
-        idlinkStart++;
-        fs.writeFileSync('./src/idlink.txt', String(idlinkStart));
-        if (link_data.trustline != null) {
-          let trustline = client.open(await LetsTrustlineV0R0.fromAddress(link_data.trustline));
-          let trustline_data = await trustline.getData();
-          let date = new Date();
-          await conn.query(`MERGE (n: Wallets {address: '${trustline_data.creditor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
-          await conn.query(`MERGE (n: Wallets {address: '${trustline_data.debitor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
-          await conn.query(`MATCH (a: Wallets {address: '${trustline_data.creditor}'}), (b: Wallets {address: '${trustline_data.debitor}'}) 
-                            MERGE (a)-[e:Trustlines]->(b)
-                            ON CREATE SET e.maxdept = ${trustline_data.limit}, e.address = '${trustline.address}', e.valuedept = ${trustline_data.value}, e.updated = TIMESTAMP('${date.toISOString()}') 
-                            ON MATCH SET e.maxdept = ${trustline_data.limit}, e.valuedept = ${trustline_data.value}, e.updated = TIMESTAMP('${date.toISOString()}');`)
-          console.log(trustline.address);
-          
-        }
-        
+  try {
+    let txt = fs.readFileSync('./src/idlink.txt', 'utf8');
+    let idlinkStart = BigInt(txt);
+    let idlink = (await hub.getData()).linkId;
+    console.log(`idlink = ${idlink}`);
+    while (idlinkStart <= idlink - 1n) {
+      let linkInit = await LetsLinkV0R0.fromInit(idlinkStart, currency);
+      if ((await client.getContractState(linkInit.address)).state == 'active') {
+        let link = client.open(linkInit);
+        let link_data = await link.getData();
+        if (link_data != null) {
+          idlinkStart++;
+          fs.writeFileSync('./src/idlink.txt', String(idlinkStart));
+          if (link_data.trustline != null) {
+            let trustline = client.open(await LetsTrustlineV0R0.fromAddress(link_data.trustline));
+            let trustline_data = await trustline.getData();
+            let date = new Date();
+            await conn.query(`MERGE (n: Wallets {address: '${trustline_data.creditor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
+            await conn.query(`MERGE (n: Wallets {address: '${trustline_data.debitor}'}) ON MATCH SET n.updated = TIMESTAMP('${date.toISOString()}');`);
+            await conn.query(`MATCH (a: Wallets {address: '${trustline_data.creditor}'}), (b: Wallets {address: '${trustline_data.debitor}'}) 
+                              MERGE (a)-[e:Trustlines]->(b)
+                              ON CREATE SET e.maxdept = ${trustline_data.limit}, e.address = '${trustline.address}', e.valuedept = ${trustline_data.value}, e.updated = TIMESTAMP('${date.toISOString()}') 
+                              ON MATCH SET e.maxdept = ${trustline_data.limit}, e.valuedept = ${trustline_data.value}, e.updated = TIMESTAMP('${date.toISOString()}');`)
+            console.log(trustline.address);
+          }
+       } 
       }
-    }
+    };
+  } catch (e) {
+    console.log("Error scanHub!");
   }
    
 }
